@@ -1,0 +1,50 @@
+name: Build Linux
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'Release'
+        type: choice
+        options:
+          - Release
+          - Debug
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: centos:7
+
+    steps:
+      - name: Install dependencies
+        run: |
+          yum install -y centos-release-scl epel-release
+          yum install -y devtoolset-9 cmake3 git make glibc-devel.i686 libstdc++-devel.i686
+
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Configure CMake
+        run: |
+          source /opt/rh/devtoolset-9/enable
+          mkdir build
+          cd build
+          cmake3 .. -DCMAKE_BUILD_TYPE=${{ inputs.build_type }}
+
+      - name: Build
+        run: |
+          source /opt/rh/devtoolset-9/enable
+          cd build
+          cmake3 --build . --target nextclientapi_amxx -j$(nproc)
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextclientapi_amxx-linux-${{ inputs.build_type }}
+          path: build/nextclientapi_amxx_i386.so
+          if-no-files-found: error
