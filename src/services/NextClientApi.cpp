@@ -6,6 +6,7 @@ NextClientApi::NextClientApi(GameEventsManager& game_events_manager, NclmProtoco
     game_events_manager_(game_events_manager),
     nclm_protocol_(nclm_protocol)
 {
+    game_events_manager_.on_server_activated().connect(&NextClientApi::ServerActivatedHandler, this);
     game_events_manager_.on_player_think_post().connect(&NextClientApi::PlayerPostThinkHandler, this);
     game_events_manager_.on_client_connected().connect(&NextClientApi::ClientConnectedHandler, this);
     game_events_manager_.on_client_connecting().connect(&NextClientApi::ClientConnectingHandler, this);
@@ -111,6 +112,11 @@ bool NextClientApi::ParseVersion(const std::string& in, NextClientVersion& out)
 
     out = {(size_t)major, (size_t)minor, (size_t)patch};
     return true;
+}
+
+void NextClientApi::ServerActivatedHandler(ServerActivatedEvent event)
+{
+    forward_api_ready_ = MF_RegisterForward("ncl_client_api_ready", ET_IGNORE, FP_CELL, FP_DONE);
 }
 
 void NextClientApi::ClientAuthHandler(ClientAuthEvent event)

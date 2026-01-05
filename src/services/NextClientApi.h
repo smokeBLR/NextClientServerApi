@@ -31,6 +31,7 @@ public:
 private:
     bool ParseVersion(const std::string& in, NextClientVersion& out);
 
+    void ServerActivatedHandler(ServerActivatedEvent event);
     void ClientAuthHandler(ClientAuthEvent event);
     void PlayerPostThinkHandler(ClientId client);
     void ClientConnectedHandler(ClientId client);
