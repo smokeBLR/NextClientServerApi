@@ -15,32 +15,46 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: centos:7
 
     steps:
-      - name: Install dependencies
-        run: |
-          yum install -y centos-release-scl epel-release
-          yum install -y devtoolset-9 cmake3 git make glibc-devel.i686 libstdc++-devel.i686
-
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Configure CMake
+      - name: Build in Ubuntu 14.04 container
         run: |
-          source /opt/rh/devtoolset-9/enable
-          mkdir build
-          cd build
-          cmake3 .. -DCMAKE_BUILD_TYPE=${{ inputs.build_type }}
-
-      - name: Build
-        run: |
-          source /opt/rh/devtoolset-9/enable
-          cd build
-          cmake3 --build . --target nextclientapi_amxx -j$(nproc)
+          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace ubuntu:14.04 bash -c '
+            set -e
+            
+            # Add PPA for newer GCC
+            apt-get update
+            apt-get install -y software-properties-common
+            add-apt-repository -y ppa:ubuntu-toolchain-r/test
+            apt-get update
+            
+            # Install build dependencies with multilib support
+            apt-get install -y \
+              gcc-9 g++-9 gcc-9-multilib g++-9-multilib \
+              make git wget \
+              libc6-dev libc6-dev-i386 \
+              lib32stdc++-9-dev
+            
+            # Install CMake 3.10+
+            wget -q https://cmake.org/files/v3.16/cmake-3.16.9-Linux-x86_64.tar.gz
+            tar -xzf cmake-3.16.9-Linux-x86_64.tar.gz
+            export PATH=$(pwd)/cmake-3.16.9-Linux-x86_64/bin:$PATH
+            
+            # Set GCC 9 as default
+            update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 90
+            update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 90
+            
+            # Build
+            mkdir -p build
+            cd build
+            cmake .. -DCMAKE_BUILD_TYPE=${{ inputs.build_type }}
+            cmake --build . --target nextclientapi_amxx -j$(nproc)
+          '
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
